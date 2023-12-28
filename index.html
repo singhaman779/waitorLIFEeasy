@@ -10,13 +10,25 @@
             flex-wrap: wrap;
         }
 
-        .column {
-            flex: 1;
-            margin-right: 10px;
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
 
-        .select-container {
-            margin-bottom: 10px;
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
         }
 
         .btn-add-to-bill {
@@ -28,15 +40,20 @@
             cursor: pointer;
         }
 
-        .order-list {
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 20px;
         }
 
-        .order-list-item {
-            margin-bottom: 10px;
+        .order-table th, .order-table td {
             border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .order-table th {
+            background-color: #f2f2f2;
         }
 
         .btn-delete-order {
@@ -46,109 +63,126 @@
             border: none;
             border-radius: 3px;
             cursor: pointer;
-            margin-left: 5px;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.23.0/axios.min.js"></script>
     <script>
-        async function showOrderList(tableNumber) {
-            try {
-                const response = await axios.get(`https://crudcrud.com/api/220f10b7a6354d308cec0db0abd566ef/orders?table=${tableNumber}`);
-                const orders = response.data;
+        const apiUrl = "https://crudcrud.com/api/d5fd308cae6b4f94a6027833fd4e612d/orders";
 
-                var orderList = document.getElementById('order-list');
-                orderList.innerHTML = '<h4>Order List for Table ' + tableNumber + '</h4>';
-
-                if (orders.length === 0) {
-                    orderList.innerHTML += '<p>No orders yet.</p>';
-                } else {
-                    orders.forEach(function(order) {
-                        var orderItem = document.createElement('div');
-                        orderItem.className = 'order-list-item';
-                        orderItem.innerHTML =
-                            '<strong>Dish:</strong> ' + order.dish +
-                            ' | <strong>Price:</strong> ' + order.price +
-                            ' | <strong>Table:</strong> ' + order.table +
-                            ' | <button class="btn-delete-order" onclick="deleteOrder(\'' + order._id + '\', \'' + tableNumber + '\')">Delete</button>';
-                        orderList.appendChild(orderItem);
-                    });
-                }
-            } catch (error) {
-                console.error('Error fetching orders:', error);
-            }
+        function addOrderToApi(newOrder) {
+            return axios.post(apiUrl, newOrder, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
         }
 
-        async function addOrder(tableNumber) {
-            var newOrder = {
-                dish: document.getElementById('dish-input').value,
-                price: parseFloat(document.getElementById('price-input').value),
+        function getOrdersFromApi() {
+            return axios.get(apiUrl);
+        }
+
+        function deleteOrderFromApi(orderId) {
+            return axios.delete(`${apiUrl}/${orderId}`);
+        }
+
+        function displayOrdersInTable() {
+            const orderTable = document.getElementById('order-table');
+            
+            getOrdersFromApi()
+                .then((response) => {
+                    const orders = response.data;
+
+                    // Clear existing table rows
+                    orderTable.innerHTML = '';
+
+                    // Add header row
+                    const headerRow = orderTable.insertRow(0);
+                    const headers = ['Dish', 'Price', 'Table', 'Actions'];
+                    headers.forEach((header, index) => {
+                        const cell = headerRow.insertCell(index);
+                        cell.innerHTML = `<b>${header}</b>`;
+                    });
+
+                    // Add order rows
+                    orders.forEach((order, index) => {
+                        const row = orderTable.insertRow(index + 1);
+                        const cells = [order.dish, order.price, order.table, `<button class="btn-delete-order" onclick="deleteOrder(${order._id})">Delete</button>`];
+                        cells.forEach((cellData, cellIndex) => {
+                            const cell = row.insertCell(cellIndex);
+                            cell.innerHTML = cellData;
+                        });
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error fetching orders:', error);
+                });
+        }
+
+        function addOrder() {
+            const dishName = document.getElementById('dish-input').value;
+            const price = parseFloat(document.getElementById('price-input').value);
+            const tableNumber = document.getElementById('table-select').value;
+
+            if (!dishName || isNaN(price)) {
+                alert('Please enter valid dish name and price.');
+                return;
+            }
+
+            const newOrder = {
+                dish: dishName,
+                price: price,
                 table: tableNumber
             };
 
-            try {
-                const response = await axios.post('https://crudcrud.com/api/220f10b7a6354d308cec0db0abd566ef/orders', newOrder, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+            // Add order to API
+            addOrderToApi(newOrder)
+                .then(() => {
+                    // Display orders in the table
+                    displayOrdersInTable();
+                })
+                .catch((error) => {
+                    console.error('Error adding order:', error);
                 });
-                
-                if (response.status === 200 || response.status === 201) {
-                    showOrderList(tableNumber);
-                } else {
-                    console.error('Unexpected response status:', response.status);
-                }
-            } catch (error) {
-                console.error('Error adding order:', error);
-            }
         }
 
-        async function deleteOrder(orderId, tableNumber) {
-            try {
-                await axios.delete(`https://crudcrud.com/api/220f10b7a6354d308cec0db0abd566ef/orders/${orderId}`);
-                showOrderList(tableNumber);
-            } catch (error) {
-                console.error('Error deleting order:', error);
-            }
+        function deleteOrder(orderId) {
+            // Delete order from API
+            deleteOrderFromApi(orderId)
+                .then(() => {
+                    // Display orders in the table
+                    displayOrdersInTable();
+                })
+                .catch((error) => {
+                    console.error('Error deleting order:', error);
+                });
         }
     </script>
 </head>
 <body>
-    <div class="restaurant-layout">
-        <div class="column">
-            <div class="select-container">
-                <label for="price-input">Choose Price:</label>
-                <input type="text" id="price-input" placeholder="Enter price">
-            </div>
-        </div>
+    <div class="form-container">
+        <label for="dish-input">Dish Name:</label>
+        <input type="text" id="dish-input" placeholder="Enter dish name">
 
-        <div class="column">
-            <div class="select-container">
-                <label for="dish-input">Choose Dish:</label>
-                <input type="text" id="dish-input" placeholder="Enter dish name">
-            </div>
-        </div>
+        <label for="price-input">Price:</label>
+        <input type="text" id="price-input" placeholder="Enter price">
 
-        <div class="column">
-            <div class="select-container">
-                <label for="table-select">Choose a Table:</label>
-                <select id="table-select">
-                    <option value="Table 1">Table 1</option>
-                    <option value="Table 2">Table 2</option>
-                    <option value="Table 3">Table 3</option>
-                    <!-- Add more options as needed -->
-                </select>
-            </div>
-        </div>
+        <label for="table-select">Select a Table:</label>
+        <select id="table-select">
+            <option value="Table 1">Table 1</option>
+            <option value="Table 2">Table 2</option>
+            <option value="Table 3">Table 3</option>
+            <!-- Add more options as needed -->
+        </select>
+
+        <button class="btn-add-to-bill" onclick="addOrder()">Add to Bill</button>
     </div>
 
-    <button class="btn-add-to-bill" onclick="addOrder(document.getElementById('table-select').value)">Add to Bill</button>
-
-    <!-- Order list -->
-    <div id="order-list" class="order-list"></div>
+    <!-- Order table -->
+    <table id="order-table" class="order-table"></table>
 
     <script>
-        // Initial order list display for the first table
-        showOrderList('Table 1');
+        // Initial display of orders from the API
+        displayOrdersInTable();
     </script>
 </body>
 </html>

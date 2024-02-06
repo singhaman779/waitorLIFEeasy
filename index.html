@@ -67,58 +67,71 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.23.0/axios.min.js"></script>
     <script>
-        const apiUrl = "https://crudcrud.com/api/d5fd308cae6b4f94a6027833fd4e612d/orders";
+        const apiUrl = "https://crudcrud.com/api/8193bdcaee8946ffa3e269269199601e/orders";
 
-        function addOrderToApi(newOrder) {
-            return axios.post(apiUrl, newOrder, {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+        async function addOrderToApi(newOrder) {
+            try {
+                return await axios.post(apiUrl, newOrder, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+            } catch (error) {
+                console.error('Error adding order:', error);
+            }
         }
 
-        function getOrdersFromApi() {
-            return axios.get(apiUrl);
+        async function getOrdersFromApi() {
+            try {
+                const response = await axios.get(apiUrl);
+                return response.data;
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+            }
         }
 
-        function deleteOrderFromApi(orderId) {
-            return axios.delete(`${apiUrl}/${orderId}`);
+        async function deleteOrderFromApi(orderId) {
+            try {
+                return await axios.delete(`${apiUrl}/${orderId}`);
+            } catch (error) {
+                console.error('Error deleting order:', error);
+            }
         }
 
-        function displayOrdersInTable() {
+        async function displayOrdersInTable() {
             const orderTable = document.getElementById('order-table');
             
-            getOrdersFromApi()
-                .then((response) => {
-                    const orders = response.data;
+            try {
+                const orders = await getOrdersFromApi();
 
-                    // Clear existing table rows
-                    orderTable.innerHTML = '';
+                // Clear existing table rows
+                orderTable.innerHTML = '';
 
-                    // Add header row
-                    const headerRow = orderTable.insertRow(0);
-                    const headers = ['Dish', 'Price', 'Table', 'Actions'];
-                    headers.forEach((header, index) => {
-                        const cell = headerRow.insertCell(index);
-                        cell.innerHTML = `<b>${header}</b>`;
-                    });
-
-                    // Add order rows
-                    orders.forEach((order, index) => {
-                        const row = orderTable.insertRow(index + 1);
-                        const cells = [order.dish, order.price, order.table, `<button class="btn-delete-order" onclick="deleteOrder(${order._id})">Delete</button>`];
-                        cells.forEach((cellData, cellIndex) => {
-                            const cell = row.insertCell(cellIndex);
-                            cell.innerHTML = cellData;
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error fetching orders:', error);
+                // Add header row
+                const headerRow = orderTable.insertRow(0);
+                const headers = ['Dish', 'Price', 'Table', 'Actions'];
+                headers.forEach((header, index) => {
+                    const cell = headerRow.insertCell(index);
+                    cell.innerHTML = `<b>${header}</b>`;
                 });
+
+                // Add order rows
+                orders.forEach((order, index) => {
+                    const row = orderTable.insertRow(index + 1);
+                    const cells = [order.dish, order.price, order.table, `<button class="btn-delete-order" onclick="deleteOrder('${order._id}')">Delete</button>`];
+                    cells.forEach((cellData, cellIndex) => {
+                        const cell = row.insertCell(cellIndex);
+                        cell.innerHTML = cellData;
+                    });
+                });
+            } catch (error) {
+                console.error('Error displaying orders:', error);
+            }
         }
 
-        function addOrder() {
+        function addOrder(e) {
+            e.preventDefault(); // Prevent form submission
+
             const dishName = document.getElementById('dish-input').value;
             const price = parseFloat(document.getElementById('price-input').value);
             const tableNumber = document.getElementById('table-select').value;
@@ -156,33 +169,40 @@
                     console.error('Error deleting order:', error);
                 });
         }
+
+        // Initial display of orders from the API
+        displayOrdersInTable();
     </script>
 </head>
 <body>
     <div class="form-container">
-        <label for="dish-input">Dish Name:</label>
-        <input type="text" id="dish-input" placeholder="Enter dish name">
+        <form id="order-form">
+            <label for="dish-input">Dish Name:</label>
+            <input type="text" id="dish-input" placeholder="Enter dish name">
 
-        <label for="price-input">Price:</label>
-        <input type="text" id="price-input" placeholder="Enter price">
+            <label for="price-input">Price:</label>
+            <input type="text" id="price-input" placeholder="Enter price">
 
-        <label for="table-select">Select a Table:</label>
-        <select id="table-select">
-            <option value="Table 1">Table 1</option>
-            <option value="Table 2">Table 2</option>
-            <option value="Table 3">Table 3</option>
-            <!-- Add more options as needed -->
-        </select>
+            <label for="table-select">Select a Table:</label>
+            <select id="table-select">
+                <option value="Table 1">Table 1</option>
+                <option value="Table 2">Table 2</option>
+                <option value="Table 3">Table 3</option>
+                <!-- Add more options as needed -->
+            </select>
 
-        <button class="btn-add-to-bill" onclick="addOrder()">Add to Bill</button>
+            <button type="submit" class="btn-add-to-bill" onclick="addOrder(event)">Add to Bill</button>
+        </form>
     </div>
 
     <!-- Order table -->
-    <table id="order-table" class="order-table"></table>
-
-    <script>
-        // Initial display of orders from the API
-        displayOrdersInTable();
-    </script>
+    <table id="order-table" class="order-table">
+        <tr>
+            <th>Dish</th>
+            <th>Price</th>
+            <th>Table</th>
+            <th>Actions</th>
+        </tr>
+    </table>
 </body>
 </html>
